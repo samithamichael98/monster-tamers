@@ -83,127 +83,85 @@ Install the Python dependencies:
 python -m pip install fastapi "uvicorn[standard]" sqlalchemy "psycopg[binary]" python-dotenv pytest httpx
 ```
 
-## Database with Docker
+## Database Setup (PostgreSQL + pgAdmin)
 
-The PostgreSQL database runs in Docker using
-[`docker-compose.yml`](./docker-compose.yml). The Compose file creates:
+Monster Tamers uses a local PostgreSQL database. Docker is not required.
 
-- Database: `monster_tamers`
-- User: `monster_user`
-- Container: `monster-tamers-db`
-- Host address: `127.0.0.1:5433`
-- Container address: `db:5432` (only for other Docker services)
+### 1. Install PostgreSQL
 
-Create a local `.env.docker` file in the project root. Do not commit this file:
+Install PostgreSQL on your computer using the official installer for your operating system:
 
-```dotenv
-POSTGRES_PASSWORD=choose-a-local-password
-```
+- PostgreSQL downloads: https://www.postgresql.org/download/
+- pgAdmin: https://www.pgadmin.org/download/
 
-Start the database:
+You can use pgAdmin to create and manage your database and view its tables.
 
-```bash
-docker compose --env-file .env.docker up -d db
-```
+### 2. Create the database
 
-Check that the container is running:
+Open pgAdmin, connect to your local PostgreSQL server, right-click **Databases**, and select **Create → Database**.
 
-```bash
-docker compose --env-file .env.docker ps
-docker compose --env-file .env.docker logs db
-```
+Use this database name:
 
-Stop the database without deleting its data:
+`monster_tamers`
 
-```bash
-docker compose --env-file .env.docker stop db
-```
+Use your own PostgreSQL username and password. The default local PostgreSQL port is usually `5432`.
 
-Stop the database and remove the container:
+### 3. Configure the application
 
-```bash
-docker compose --env-file .env.docker down
-```
+Create a `.env` file in the project root. Do not commit this file or share your database password.
 
-The database data is stored in the named Docker volume
-`monster_tamers_data`, so it remains available after the container stops.
-To delete the database data permanently, run:
-
-```bash
-docker compose --env-file .env.docker down -v
-```
-
-### Application connection
-
-When the FastAPI application runs directly on the host, connect through the
-published port `5433`:
-
-The application reads the database connection string from the
-`DATABASE_URL` environment variable. If it is not set, it uses:
-
-```text
-postgresql+psycopg://samithamichael@localhost:5432/monster_tamers
-```
-
-For the Docker database, set `DATABASE_URL` to:
-
-```bash
-export DATABASE_URL="postgresql+psycopg://monster_user:<password>@127.0.0.1:5433/monster_tamers"
-```
-
-On Windows PowerShell:
-
-```powershell
-$env:DATABASE_URL = "postgresql+psycopg://monster_user:<password>@127.0.0.1:5433/monster_tamers"
-```
-
-The application loads `.env` automatically. You can alternatively store the
-same `DATABASE_URL` value in a local `.env` file:
+Add your own connection details:
 
 ```dotenv
-DATABASE_URL=postgresql+psycopg://monster_user:choose-a-local-password@127.0.0.1:5433/monster_tamers
+DATABASE_URL=postgresql+psycopg://YOUR_USERNAME:YOUR_PASSWORD@127.0.0.1:5432/monster_tamers
 ```
 
-Do not commit `.env`, `.env.docker`, or database passwords.
+Replace `YOUR_USERNAME` and `YOUR_PASSWORD` with your PostgreSQL credentials. If your password contains special characters, URL-encode them in the connection URL.
 
-### Database schema and sample data
+The application reads `DATABASE_URL` from `.env`. If it is not configured, the default connection URL in `app/db/database.py` is used.
 
-The current project does not run migrations or seed data automatically. After
-starting the container, create the tables and sample data using the following
-SQL:
+### 4. Create the database tables
+
+From the project root, with your virtual environment activated, run:
+
+```bash
+python init_db.py
+```
+
+This creates any missing SQLAlchemy tables defined by the application models. It does not automatically insert the sample monsters.
+
+### 5. Add the sample monsters
+
+In pgAdmin, open **Tools → Query Tool** for the `monster_tamers` database and run the following SQL if the sample monsters are not already present:
 
 ```sql
-CREATE TABLE monsters (
-    id INTEGER PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    attack INTEGER NOT NULL,
-    defense INTEGER NOT NULL
-);
-
-CREATE TABLE player_monsters (
-    player_id INTEGER NOT NULL,
-    monster_id INTEGER NOT NULL REFERENCES monsters(id),
-    PRIMARY KEY (player_id, monster_id)
-);
-
-INSERT INTO monsters (id, name, type, attack, defense) VALUES
+INSERT INTO monsters (id, name, type, attack, defense)
+VALUES
     (1, 'Flameling', 'Fire', 80, 50),
     (2, 'Aquaris', 'Water', 60, 80),
     (3, 'Stonehorn', 'Earth', 70, 100),
-    (4, 'Shadowling', 'Shadow', 90, 60);
+    (4, 'Shadowling', 'Shadow', 90, 60)
+ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO player_monsters (player_id, monster_id) VALUES
+INSERT INTO player_monsters (player_id, monster_id)
+VALUES
     (1, 1),
     (1, 2),
-    (1, 3);
+    (1, 3)
+ON CONFLICT (player_id, monster_id) DO NOTHING;
 ```
 
-You can run this SQL inside the running database container with:
+Run the sample-data SQL only after creating the tables. If your database already contains the sample data, you do not need to run it again.
+
+### 6. Verify the database connection
+
+Run:
 
 ```bash
-docker exec -i monster-tamers-db \
-  psql -U monster_user -d monster_tamers < seed.sql
+python check_db.py
+```
+
+If the connection fails, verify that PostgreSQL is running, the database exists, and your `.env` connection details are correct.
 ```
 
 Save the SQL above as `seed.sql` first, or run it through any PostgreSQL
@@ -218,12 +176,6 @@ python check_db.py
 ```
 
 ## Running the application
-
-Start the database first:
-
-```bash
-docker compose --env-file .env.docker up -d db
-```
 
 Start the development server from the project root:
 
