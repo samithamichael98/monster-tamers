@@ -38,6 +38,7 @@ monster-tamers/
 │   └── models.py             # Pydantic request and response models
 ├── tests/
 │   └── test_monsters.py      # API tests
+├── docker-compose.yml        # PostgreSQL development service
 ├── check_db.py               # Database connectivity/query check
 ├── main.py                   # FastAPI application entry point
 └── .gitignore
@@ -48,7 +49,7 @@ monster-tamers/
 Before running the application, make sure the following are installed:
 
 - Python 3.10+
-- PostgreSQL
+- Docker Desktop or Docker Engine with Compose
 - `pip`
 
 ## Installation
@@ -76,13 +77,66 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-Install the dependencies:
+Install the Python dependencies:
 
 ```bash
-python -m pip install fastapi "uvicorn[standard]" sqlalchemy "psycopg[binary]" pytest httpx
+python -m pip install fastapi "uvicorn[standard]" sqlalchemy "psycopg[binary]" python-dotenv pytest httpx
 ```
 
-## Database configuration
+## Database with Docker
+
+The PostgreSQL database runs in Docker using
+[`docker-compose.yml`](./docker-compose.yml). The Compose file creates:
+
+- Database: `monster_tamers`
+- User: `monster_user`
+- Container: `monster-tamers-db`
+- Host address: `127.0.0.1:5433`
+- Container address: `db:5432` (only for other Docker services)
+
+Create a local `.env.docker` file in the project root. Do not commit this file:
+
+```dotenv
+POSTGRES_PASSWORD=choose-a-local-password
+```
+
+Start the database:
+
+```bash
+docker compose --env-file .env.docker up -d db
+```
+
+Check that the container is running:
+
+```bash
+docker compose --env-file .env.docker ps
+docker compose --env-file .env.docker logs db
+```
+
+Stop the database without deleting its data:
+
+```bash
+docker compose --env-file .env.docker stop db
+```
+
+Stop the database and remove the container:
+
+```bash
+docker compose --env-file .env.docker down
+```
+
+The database data is stored in the named Docker volume
+`monster_tamers_data`, so it remains available after the container stops.
+To delete the database data permanently, run:
+
+```bash
+docker compose --env-file .env.docker down -v
+```
+
+### Application connection
+
+When the FastAPI application runs directly on the host, connect through the
+published port `5433`:
 
 The application reads the database connection string from the
 `DATABASE_URL` environment variable. If it is not set, it uses:
@@ -91,34 +145,32 @@ The application reads the database connection string from the
 postgresql+psycopg://samithamichael@localhost:5432/monster_tamers
 ```
 
-Create the database in PostgreSQL:
-
-```sql
-CREATE DATABASE monster_tamers;
-```
-
-Set the connection string for your local PostgreSQL user:
-
-### macOS/Linux
+For the Docker database, set `DATABASE_URL` to:
 
 ```bash
-export DATABASE_URL="postgresql+psycopg://<user>:<password>@localhost:5432/monster_tamers"
+export DATABASE_URL="postgresql+psycopg://monster_user:<password>@127.0.0.1:5433/monster_tamers"
 ```
 
-### Windows PowerShell
+On Windows PowerShell:
 
 ```powershell
-$env:DATABASE_URL = "postgresql+psycopg://<user>:<password>@localhost:5432/monster_tamers"
+$env:DATABASE_URL = "postgresql+psycopg://monster_user:<password>@127.0.0.1:5433/monster_tamers"
 ```
 
-The application expects the following tables:
+The application loads `.env` automatically. You can alternatively store the
+same `DATABASE_URL` value in a local `.env` file:
 
-- `monsters`
-- `player_monsters`
+```dotenv
+DATABASE_URL=postgresql+psycopg://monster_user:choose-a-local-password@127.0.0.1:5433/monster_tamers
+```
 
-The current project does not run migrations or seed data automatically. The
-following SQL creates the tables and inserts the sample data used by the API
-tests:
+Do not commit `.env`, `.env.docker`, or database passwords.
+
+### Database schema and sample data
+
+The current project does not run migrations or seed data automatically. After
+starting the container, create the tables and sample data using the following
+SQL:
 
 ```sql
 CREATE TABLE monsters (
@@ -147,6 +199,16 @@ INSERT INTO player_monsters (player_id, monster_id) VALUES
     (1, 3);
 ```
 
+You can run this SQL inside the running database container with:
+
+```bash
+docker exec -i monster-tamers-db \
+  psql -U monster_user -d monster_tamers < seed.sql
+```
+
+Save the SQL above as `seed.sql` first, or run it through any PostgreSQL
+client connected to `127.0.0.1:5433`.
+
 If the sample data already exists, do not run the `INSERT` statements again.
 
 You can check the database connection and list the stored monsters with:
@@ -156,6 +218,12 @@ python check_db.py
 ```
 
 ## Running the application
+
+Start the database first:
+
+```bash
+docker compose --env-file .env.docker up -d db
+```
 
 Start the development server from the project root:
 
@@ -219,21 +287,22 @@ curl -X POST http://127.0.0.1:8000/api/monsters/encounters \
 
 ## Testing
 
-Run the test suite from the project root:
+Start the Docker database before running the test suite:
 
 ```bash
+docker compose --env-file .env.docker up -d db
 python -m pytest -q
 ```
 
 The tests use the configured database. Successful encounter tests add the wild
-monster to the player's collection, so use a dedicated test database or reset
-test data between runs when testing against a persistent PostgreSQL database.
+monster to the player's collection; the test fixture resets that test record
+before each test.
 
 ## Environment variables
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL | `postgresql+psycopg://samithamichael@localhost:5432/monster_tamers` |
+| `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL | Docker connection on `127.0.0.1:5433` |
 
 Do not commit passwords, API keys, or other secrets. Use local environment
 variables or an untracked `.env` file for development configuration.

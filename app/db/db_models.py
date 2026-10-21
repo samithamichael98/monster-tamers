@@ -42,3 +42,27 @@ class PlayerMonsterDB(Base):
         ForeignKey("monsters.id"),
         primary_key=True,
     )
+
+
+
+class EncounterDB(Base):
+    __tablename__ = "encounters"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, index=True
+    )
+    player_id: Mapped[int] = mapped_column(
+        Integer, nullable=False
+    )
+    team_power: Mapped[int] = mapped_column(
+        Integer, nullable=False
+    )
+    difficulty: Mapped[int] = mapped_column(
+        Integer, nullable=False
+    )
+    wild_monster_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("monsters.id"), nullable=False
+    )
+    outcome: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )
