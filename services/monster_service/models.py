@@ -12,6 +12,7 @@ class MonsterDB(Base):
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     attack: Mapped[int] = mapped_column(Integer, nullable=False)
     defense: Mapped[int] = mapped_column(Integer, nullable=False)
+    image_url: Mapped[str] = mapped_column(String(500), nullable=True)
 
 
 class PlayerMonsterDB(Base):

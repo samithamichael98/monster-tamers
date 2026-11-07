@@ -1,5 +1,7 @@
 
 import pytest
+import httpx
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -7,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from services.user_service.main import app
 from services.user_service.database import Base, get_db
+
 
 
 # Separate in-memory database for testing
@@ -33,7 +36,22 @@ def override_get_db():
         db.close()
 
 
+
 app.dependency_overrides[get_db] = override_get_db
+
+@pytest.fixture(autouse=True)
+def mock_monster_service(monkeypatch):
+    def mock_post(url, timeout):
+        return httpx.Response(
+            200,
+            json=[],
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(
+        "services.user_service.main.httpx.post",
+        mock_post,
+    )
 
 
 @pytest.fixture
@@ -210,3 +228,42 @@ def test_get_profile_with_valid_token(client):
     assert response.status_code == 200
     assert response.json()["username"] == "testplayer"
     assert response.json()["email"] == "testplayer@example.com"
+
+
+def test_register_assigns_starter_monsters(client, monkeypatch):
+    calls = []
+
+    def mock_post(url, timeout):
+        calls.append(url)
+        return httpx.Response(
+            200,
+            json=[],
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(
+        "services.user_service.main.httpx.post",
+        mock_post,
+    )
+
+    response = register_test_user(client)
+
+    assert response.status_code == 201
+    assert len(calls) == 1
+    assert "/players/1/starter-collection" in calls[0]
+
+
+def test_register_when_monster_service_unavailable(client, monkeypatch):
+    def mock_post(url, timeout):
+        raise httpx.ConnectError("Monster Service unavailable")
+
+    monkeypatch.setattr(
+        "services.user_service.main.httpx.post",
+        mock_post,
+    )
+
+    response = register_test_user(client)
+
+    assert response.status_code == 503
+    assert "Account created" in response.json()["detail"]
+

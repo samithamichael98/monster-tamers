@@ -5,10 +5,9 @@ import httpx
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from services.encounter_service.database import Base, engine, get_db
 from services.encounter_service import models
-from services.encounter_service.schemas import EncounterCreate, EncounterResponse
+from services.encounter_service.schemas import (EncounterCreate, EncounterResponse, AvailableEncounter)
 
 
 app = FastAPI(
@@ -144,3 +143,49 @@ def get_encounter_history(
     )
 
     return db.scalars(statement).all()
+
+
+@app.get(
+    "/encounters/available",
+    response_model=list[AvailableEncounter],
+)
+def get_available_encounters():
+    try:
+        response = httpx.get(
+            f"{MONSTER_SERVICE_URL}/monsters",
+            timeout=5.0,
+        )
+        response.raise_for_status()
+
+        monsters = response.json()
+
+        return [
+            AvailableEncounter(
+                wild_monster_id=monster["id"],
+                monster_name=monster["name"],
+                monster_type=monster["type"],
+                difficulty=monster["attack"] + monster["defense"],
+            )
+            for monster in monsters
+        ]
+
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=503,
+            detail="Monster Service is currently unavailable",
+        )
+
+@app.get("/encounters/{encounter_id}", response_model=EncounterResponse)
+def get_encounter_details(
+    encounter_id: int,
+    db: Session = Depends(get_db),
+):
+    encounter = db.get(models.EncounterDB, encounter_id)
+
+    if encounter is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Encounter not found",
+        )
+
+    return encounter

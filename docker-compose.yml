@@ -21,7 +21,7 @@ services:
   user-service:
     build:
       context: .
-      dockerfile: services/user_service/dockerfile
+      dockerfile: services/user_service/Dockerfile
     container_name: monster-tamers-user-service
     restart: unless-stopped
     environment:
@@ -29,11 +29,20 @@ services:
       USER_DB_HOST: user-db
       USER_DB_PORT: "5432"
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      MONSTER_SERVICE_URL: http://monster-service:8002
+      TEAM_SERVICE_URL: http://team-service:8003
+      ENCOUNTER_SERVICE_URL: http://encounter-service:8004
     ports:
       - "127.0.0.1:8001:8001"
     depends_on:
       user-db:
         condition: service_healthy
+      monster-service:
+        condition: service_started
+      team-service:
+        condition: service_started
+      encounter-service:
+        condition: service_started
 
   monster-db:
     image: postgres:18
@@ -69,7 +78,6 @@ services:
       monster-db:
         condition: service_healthy
 
-  
   team-db:
     image: postgres:18
     container_name: monster-tamers-team-db
@@ -88,8 +96,6 @@ services:
       timeout: 5s
       retries: 5
 
-
-  
   team-service:
     build:
       context: .
@@ -101,6 +107,8 @@ services:
       TEAM_DB_HOST: team-db
       TEAM_DB_PORT: "5432"
       MONSTER_SERVICE_URL: http://monster-service:8002
+      TEAM_SERVICE_URL: http://team-service:8003
+      ENCOUNTER_SERVICE_URL: http://encounter-service:8004
     ports:
       - "127.0.0.1:8003:8003"
     depends_on:
@@ -108,7 +116,6 @@ services:
         condition: service_healthy
       monster-service:
         condition: service_started
-
 
   encounter-db:
     image: postgres:18
@@ -155,4 +162,3 @@ volumes:
   monster_db_data:
   team_db_data:
   encounter_db_data:
-  

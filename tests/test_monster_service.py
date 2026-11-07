@@ -133,3 +133,30 @@ def test_acquire_invalid_monster_id(client):
         json={"monster_id": -1},
     )
     assert response.status_code == 422
+
+
+
+def test_assign_starter_collection(client):
+    response = client.post("/players/2/starter-collection")
+
+    assert response.status_code == 200
+
+    monsters = response.json()
+    assert [monster["id"] for monster in monsters] == [1, 2, 3]
+
+
+def test_assign_starter_collection_is_idempotent(client):
+    first_response = client.post("/players/1/starter-collection")
+    second_response = client.post("/players/1/starter-collection")
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+
+    assert [m["id"] for m in first_response.json()] == [1, 2, 3]
+    assert [m["id"] for m in second_response.json()] == [1, 2, 3]
+
+
+def test_assign_starter_collection_invalid_player(client):
+    response = client.post("/players/0/starter-collection")
+
+    assert response.status_code == 400

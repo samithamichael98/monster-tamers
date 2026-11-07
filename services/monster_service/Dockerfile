@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY services/ ./services/
 
+COPY static/ ./static/
+
 RUN useradd --create-home appuser
 
 USER appuser

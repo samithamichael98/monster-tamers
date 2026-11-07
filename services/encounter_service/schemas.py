@@ -21,3 +21,9 @@ class EncounterResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+class AvailableEncounter(BaseModel):
+    wild_monster_id: int
+    monster_name: str
+    monster_type: str
+    difficulty: int

@@ -17,6 +17,28 @@ from services.user_service.security import (
     get_current_user_id,
 )
 
+
+import os
+import httpx
+MONSTER_SERVICE_URL = os.getenv(
+    "MONSTER_SERVICE_URL",
+    "http://localhost:8002",
+)
+
+TEAM_SERVICE_URL = os.getenv(
+    "TEAM_SERVICE_URL",
+    "http://localhost:8003",
+)
+
+ENCOUNTER_SERVICE_URL = os.getenv(
+    "ENCOUNTER_SERVICE_URL",
+    "http://localhost:8004",
+)
+
+STARTER_MONSTERS_ENDPOINT = (
+    f"{MONSTER_SERVICE_URL}/players"
+)
+
 app = FastAPI(
     title="Monster Tamers - User Service",
     description="Handles player registration, login and authentication.",
@@ -36,6 +58,8 @@ def health_check():
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
 )
+
+
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
     existing_user = (
@@ -63,7 +87,47 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
+    try:
+        response = httpx.post(
+            f"{STARTER_MONSTERS_ENDPOINT}/{new_user.id}/starter-collection",
+            timeout=5.0,
+        )
+        response.raise_for_status()
+
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Account created, but starter monsters could not "
+                "be assigned. Please contact support."
+            ),
+        )
+
     return new_user
+
+
+@app.post("/me/starter-collection")
+def retry_starter_collection(
+    user_id: int = Depends(get_current_user_id),
+):
+    try:
+        response = httpx.post(
+            f"{STARTER_MONSTERS_ENDPOINT}/{user_id}/starter-collection",
+            timeout=5.0,
+        )
+        response.raise_for_status()
+
+        return {
+            "message": "Starter collection assigned successfully",
+            "player_id": user_id,
+            "collection": response.json(),
+        }
+
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Monster Service is currently unavailable. Please try again.",
+        )
 
 
 @app.post("/login", response_model=TokenResponse)
@@ -113,3 +177,76 @@ def get_my_profile(
         )
 
     return current_user
+
+@app.get("/me/progress")
+def get_my_progress(
+    user_id: int = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+):
+    current_user = db.query(models.UserDB).filter(
+        models.UserDB.id == user_id
+    ).first()
+
+    if current_user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    try:
+        collection_response = httpx.get(
+            f"{MONSTER_SERVICE_URL}/players/{user_id}/collection",
+            timeout=5.0,
+        )
+        collection_response.raise_for_status()
+
+        teams_response = httpx.get(
+            f"{TEAM_SERVICE_URL}/players/{user_id}/teams",
+            timeout=5.0,
+        )
+        teams_response.raise_for_status()
+
+        encounters_response = httpx.get(
+            f"{ENCOUNTER_SERVICE_URL}/players/{user_id}/encounters",
+            timeout=5.0,
+        )
+        encounters_response.raise_for_status()
+
+        monsters_response = httpx.get(
+            f"{MONSTER_SERVICE_URL}/monsters",
+            timeout=5.0,
+        )
+        monsters_response.raise_for_status()
+
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=503,
+            detail="A required service is currently unavailable",
+        )
+
+    monsters = monsters_response.json()
+    encounters = encounters_response.json()
+
+    defeated_monsters = {
+        encounter["wild_monster_id"]
+        for encounter in encounters
+        if encounter["outcome"] == "SUCCESS"
+    }
+
+    completed = len(
+        defeated_monsters.intersection(
+            {monster["id"] for monster in monsters}
+        )
+    )
+
+    return {
+        "player": {
+            "id": current_user.id,
+            "username": current_user.username,
+            "email": current_user.email,
+        },
+        "collection": collection_response.json(),
+        "teams": teams_response.json(),
+        "encounters": encounters,
+        "progress": f"{completed}/{len(monsters)}",
+    }

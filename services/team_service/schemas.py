@@ -20,3 +20,15 @@ class TeamResponse(BaseModel):
     player_id: int
     monster_ids: list[int]
     team_power: int
+
+
+class TeamReplace(BaseModel):
+    old_monster_id: int = Field(gt=0)
+    new_monster_id: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_different_monsters(self):
+        if self.old_monster_id == self.new_monster_id:
+            raise ValueError("Replacement monster must be different")
+
+        return self    

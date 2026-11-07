@@ -7,6 +7,7 @@ class MonsterResponse(BaseModel):
     type: str
     attack: int
     defense: int
+    image_url: str | None = None
 
     model_config = {"from_attributes": True}
 
