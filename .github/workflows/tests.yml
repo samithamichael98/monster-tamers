@@ -13,6 +13,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      MONSTER_DB_PASSWORD: ${{ secrets.MONSTER_DB_PASSWORD }}
+      TEAM_DB_PASSWORD: ${{ secrets.TEAM_DB_PASSWORD }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      USER_DB_PASSWORD: ${{ secrets.USER_DB_PASSWORD }}
+      ENCOUNTER_DB_PASSWORD: ${{ secrets.ENCOUNTER_DB_PASSWORD }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
