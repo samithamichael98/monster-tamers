@@ -57,6 +57,39 @@ def client(monkeypatch):
                 )
 
     def fake_get(url, timeout=5.0):
+
+        if url.endswith("/monsters"):
+            return FakeResponse([
+                {
+                    "id": 1,
+                    "name": "Flameling",
+                    "type": "Fire",
+                    "attack": 80,
+                    "defense": 50,
+                },
+                {
+                    "id": 2,
+                    "name": "Aquaris",
+                    "type": "Water",
+                    "attack": 60,
+                    "defense": 80,
+                },
+                {
+                    "id": 3,
+                    "name": "Stonehorn",
+                    "type": "Earth",
+                    "attack": 70,
+                    "defense": 100,
+                },
+                {
+                    "id": 4,
+                    "name": "Shadowling",
+                    "type": "Shadow",
+                    "attack": 90,
+                    "defense": 60,
+                },
+            ])
+            
         if "/players/1/teams" in url:
             return FakeResponse([
                 {
@@ -181,3 +214,38 @@ def test_encounter_history(client):
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["outcome"] == "FAILURE"
+
+
+def test_get_available_encounters(client):
+    response = client.get("/encounters/available")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 4
+    assert response.json()[0]["monster_name"] == "Flameling"
+    assert response.json()[0]["difficulty"] == 130
+
+
+def test_get_single_encounter(client):
+    create_response = client.post(
+        "/encounters",
+        json={
+            "player_id": 1,
+            "team_id": 4,
+            "wild_monster_id": 1,
+            "difficulty": 100,
+        },
+    )
+
+    encounter_id = create_response.json()["id"]
+
+    response = client.get(f"/encounters/{encounter_id}")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == encounter_id
+    assert response.json()["player_id"] == 1
+
+
+def test_get_nonexistent_encounter(client):
+    response = client.get("/encounters/999")
+
+    assert response.status_code == 404

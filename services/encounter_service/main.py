@@ -11,7 +11,7 @@ from services.encounter_service.schemas import (EncounterCreate, EncounterRespon
 
 
 app = FastAPI(
-    title="Monster Tamers - Encounter Service",
+    title="Myth.exe - Encounter Service",
     description="Handles monster encounters, battle outcomes and encounter history.",
     version="1.0.0"
 )

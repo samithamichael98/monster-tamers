@@ -10,7 +10,7 @@ from services.team_service import models
 from services.team_service.schemas import (TeamCreate, TeamResponse, TeamReplace)
 
 app = FastAPI(
-    title="Monster Tamers - Team Service",
+    title="Myth.exe - Team Service",
     description="Manages player teams and calculates team power.",
     version="1.0.0",
 )

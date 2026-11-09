@@ -1,15 +1,12 @@
-
 import pytest
 import httpx
-
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
 from services.user_service.main import app
 from services.user_service.database import Base, get_db
-
+import services.user_service.main as user_main
 
 
 # Separate in-memory database for testing
@@ -267,3 +264,103 @@ def test_register_when_monster_service_unavailable(client, monkeypatch):
     assert response.status_code == 503
     assert "Account created" in response.json()["detail"]
 
+
+def test_get_progress_with_valid_token(client, monkeypatch):
+    import services.user_service.main as user_main
+
+    register_test_user(client)
+
+    login_response = client.post(
+        "/login",
+        json={
+            "username": "testplayer",
+            "password": "SecurePass123!",
+        },
+    )
+    token = login_response.json()["access_token"]
+
+    def fake_get(url, timeout=5.0):
+        if url.endswith("/players/1/collection"):
+            data = [{"monster_id": 1}, {"monster_id": 2}]
+        elif url.endswith("/players/1/teams"):
+            data = [{"id": 1, "name": "Test Team"}]
+        elif url.endswith("/players/1/encounters"):
+            data = [
+                {"wild_monster_id": 1, "outcome": "SUCCESS"},
+                {"wild_monster_id": 1, "outcome": "SUCCESS"},
+                {"wild_monster_id": 2, "outcome": "FAILURE"},
+                {"wild_monster_id": 3, "outcome": "SUCCESS"},
+            ]
+        elif url.endswith("/monsters"):
+            data = [
+                {"id": 1},
+                {"id": 2},
+                {"id": 3},
+                {"id": 4},
+            ]
+        else:
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        return httpx.Response(
+            200,
+            json=data,
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(user_main.httpx, "get", fake_get)
+
+    response = client.get(
+        "/me/progress",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["progress"] == "2/4"
+    assert "player" in response.json()
+    assert "collection" in response.json()
+    assert "teams" in response.json()
+    assert "encounters" in response.json()
+
+def test_get_progress_without_token(client):
+    register_test_user(client)
+
+    response = client.get("/me/progress")
+
+    assert response.status_code == 401
+
+def test_get_progress_with_invalid_token(client):
+    response = client.get(
+        "/me/progress",
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+
+    assert response.status_code == 401
+
+def test_get_progress_when_service_unavailable(client, monkeypatch):
+    import services.user_service.main as user_main
+
+    register_test_user(client)
+
+    login_response = client.post(
+        "/login",
+        json={
+            "username": "testplayer",
+            "password": "SecurePass123!",
+        },
+    )
+    token = login_response.json()["access_token"]
+
+    def failing_get(url, timeout=5.0):
+        raise httpx.ConnectError(
+            "Service unavailable",
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(user_main.httpx, "get", failing_get)
+
+    response = client.get(
+        "/me/progress",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 503

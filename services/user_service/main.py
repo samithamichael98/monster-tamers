@@ -40,7 +40,7 @@ STARTER_MONSTERS_ENDPOINT = (
 )
 
 app = FastAPI(
-    title="Monster Tamers - User Service",
+    title="Myth.exe - User Service",
     description="Handles player registration, login and authentication.",
     version="1.0.0",
 )

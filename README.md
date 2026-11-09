@@ -1,6 +1,6 @@
-# Monster Tamers
+# Myth.exe
 
-Monster Tamers is a FastAPI microservices application for managing users,
+Myth.exe is a FastAPI microservices application for managing users,
 monsters, teams, and monster encounters. Each service has its own PostgreSQL
 database and runs in its own Docker container.
 

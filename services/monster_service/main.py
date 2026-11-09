@@ -7,7 +7,7 @@ from services.monster_service import models
 from services.monster_service.schemas import MonsterResponse, MonsterAcquire
 
 app = FastAPI(
-    title="Monster Tamers - Monster Service",
+    title="Myth.exe - Monster Service",
     description="Manages the monster catalogue and player collections.",
     version="1.0.0",
 )

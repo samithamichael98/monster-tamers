@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
 from services.team_service.main import app
 from services.team_service.database import Base, get_db
 import services.team_service.main as team_main
@@ -150,3 +149,73 @@ def test_get_player_teams(client):
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["team_power"] == 440
+
+
+def test_replace_monster_in_team(client):
+    create_response = client.post(
+        "/players/1/teams",
+        json={"monster_ids": [1, 2]},
+    )
+    team_id = create_response.json()["id"]
+
+    response = client.put(
+        f"/players/1/teams/{team_id}/replace",
+        json={
+            "old_monster_id": 1,
+            "new_monster_id": 3,
+        },
+    )
+
+    assert response.status_code == 200
+    assert set(response.json()["monster_ids"]) == {2, 3}
+    assert response.json()["team_power"] == 310
+
+
+def test_replace_with_monster_already_in_team(client):
+    create_response = client.post(
+        "/players/1/teams",
+        json={"monster_ids": [1, 2]},
+    )
+    team_id = create_response.json()["id"]
+
+    response = client.put(
+        f"/players/1/teams/{team_id}/replace",
+        json={
+            "old_monster_id": 1,
+            "new_monster_id": 2,
+        },
+    )
+
+    assert response.status_code == 409
+
+
+def test_remove_monster_from_team(client):
+    create_response = client.post(
+        "/players/1/teams",
+        json={"monster_ids": [1, 2]},
+    )
+    team_id = create_response.json()["id"]
+
+    response = client.delete(
+        f"/players/1/teams/{team_id}/monsters/1"
+    )
+
+    assert response.status_code == 200
+
+    teams_response = client.get("/players/1/teams")
+    assert teams_response.json()[0]["monster_ids"] == [2]
+    assert teams_response.json()[0]["team_power"] == 140
+
+
+def test_cannot_remove_last_monster_from_team(client):
+    create_response = client.post(
+        "/players/1/teams",
+        json={"monster_ids": [1]},
+    )
+    team_id = create_response.json()["id"]
+
+    response = client.delete(
+        f"/players/1/teams/{team_id}/monsters/1"
+    )
+
+    assert response.status_code == 400

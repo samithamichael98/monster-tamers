@@ -32,19 +32,19 @@ def client():
     monsters = [
         models.MonsterDB(
             id=1, name="Flameling", type="Fire",
-            attack=80, defense=50
+            attack=80, defense=50, image_url="/static/monsters/flameling.png",
         ),
         models.MonsterDB(
             id=2, name="Aquaris", type="Water",
-            attack=60, defense=80
+            attack=60, defense=80,  image_url="/static/monsters/aquaris.png",
         ),
         models.MonsterDB(
             id=3, name="Stonehorn", type="Earth",
-            attack=70, defense=100
+            attack=70, defense=100, image_url="/static/monsters/stonehorn.png",
         ),
         models.MonsterDB(
             id=4, name="Shadowling", type="Shadow",
-            attack=90, defense=60
+            attack=90, defense=60, image_url="/static/monsters/shadowling.png",
         ),
     ]
 
@@ -82,8 +82,13 @@ def test_health_check(client):
 
 def test_get_all_monsters(client):
     response = client.get("/monsters")
+
     assert response.status_code == 200
     assert len(response.json()) == 4
+
+    for monster in response.json():
+        assert "image_url" in monster
+        assert monster["image_url"] is not None
 
 
 def test_get_single_monster(client):
