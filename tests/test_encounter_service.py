@@ -60,34 +60,16 @@ def client(monkeypatch):
 
         if url.endswith("/monsters"):
             return FakeResponse([
-                {
-                    "id": 1,
-                    "name": "Flameling",
-                    "type": "Fire",
-                    "attack": 80,
-                    "defense": 50,
-                },
-                {
-                    "id": 2,
-                    "name": "Aquaris",
-                    "type": "Water",
-                    "attack": 60,
-                    "defense": 80,
-                },
-                {
-                    "id": 3,
-                    "name": "Stonehorn",
-                    "type": "Earth",
-                    "attack": 70,
-                    "defense": 100,
-                },
-                {
-                    "id": 4,
-                    "name": "Shadowling",
-                    "type": "Shadow",
-                    "attack": 90,
-                    "defense": 60,
-                },
+                {"id": 1, "name": "Flameling", "type": "Fire", "attack": 95, "defense": 55},
+                {"id": 2, "name": "Aquaris", "type": "Water", "attack": 65, "defense": 85},
+                {"id": 3, "name": "Stonehorn", "type": "Earth", "attack": 55, "defense": 95},
+                {"id": 4, "name": "Shadowling", "type": "Shadow", "attack": 100, "defense": 50},
+                {"id": 5, "name": "Leafiris", "type": "Nature", "attack": 75, "defense": 75},
+                {"id": 6, "name": "Voltstrike", "type": "Electric", "attack": 105, "defense": 45},
+                {"id": 7, "name": "Frostcore", "type": "Ice", "attack": 70, "defense": 80},
+                {"id": 8, "name": "Skyflare", "type": "Wind", "attack": 60, "defense": 90},
+                {"id": 9, "name": "Magmalius", "type": "Lava", "attack": 90, "defense": 60},
+                {"id": 10, "name": "Lumira", "type": "Light", "attack": 80, "defense": 70},
             ])
             
         if "/players/1/teams" in url:
@@ -97,7 +79,13 @@ def client(monkeypatch):
                     "player_id": 1,
                     "monster_ids": [1, 2, 3],
                     "team_power": 440,
-                }
+                },
+                {
+                    "id": 5,
+                    "player_id": 1,
+                    "monster_ids": [1],
+                    "team_power": 150,
+                },
             ])
 
         if "/monsters/4" in url or "/monsters/1" in url:
@@ -125,23 +113,23 @@ def test_health_check(client):
     assert response.json()["status"] == "healthy"
 
 
-def test_successful_encounter(client):
+def test_failed_encounter_default_difficulty(client):
     response = client.post(
         "/encounters",
         json={
             "player_id": 1,
-            "team_id": 4,
-            "wild_monster_id": 4,
-            "difficulty": 400,
+            "team_id": 5,
+            "wild_monster_id": 2,
         },
     )
 
     assert response.status_code == 201
-    assert response.json()["outcome"] == "SUCCESS"
-    assert response.json()["team_power"] == 440
+    assert response.json()["outcome"] == "FAILURE"
+    assert response.json()["team_power"] == 131
+    assert response.json()["difficulty"] == 150
 
 
-def test_failed_encounter(client):
+def test_successful_encounter_high_difficulty(client):
     response = client.post(
         "/encounters",
         json={
@@ -153,8 +141,9 @@ def test_failed_encounter(client):
     )
 
     assert response.status_code == 201
-    assert response.json()["outcome"] == "FAILURE"
-
+    assert response.json()["outcome"] == "SUCCESS"
+    assert response.json()["team_power"] == 479
+    assert response.json()["difficulty"] == 450
 
 def test_nonexistent_team(client):
     response = client.post(
@@ -163,7 +152,6 @@ def test_nonexistent_team(client):
             "player_id": 1,
             "team_id": 999,
             "wild_monster_id": 1,
-            "difficulty": 400,
         },
     )
 
@@ -177,29 +165,14 @@ def test_invalid_player_id(client):
             "player_id": 0,
             "team_id": 4,
             "wild_monster_id": 1,
-            "difficulty": 400,
         },
     )
 
     assert response.status_code == 422
 
 
-def test_invalid_difficulty(client):
+def test_successful_encounter_high_difficulty(client):
     response = client.post(
-        "/encounters",
-        json={
-            "player_id": 1,
-            "team_id": 4,
-            "wild_monster_id": 1,
-            "difficulty": 0,
-        },
-    )
-
-    assert response.status_code == 422
-
-
-def test_encounter_history(client):
-    client.post(
         "/encounters",
         json={
             "player_id": 1,
@@ -209,20 +182,37 @@ def test_encounter_history(client):
         },
     )
 
+    assert response.status_code == 201
+    assert response.json()["outcome"] == "SUCCESS"
+    assert response.json()["team_power"] == 479
+    assert response.json()["difficulty"] == 450
+
+
+def test_encounter_history(client):
+    client.post(
+        "/encounters",
+        json={
+            "player_id": 1,
+            "team_id": 5,
+            "wild_monster_id": 2,
+        },
+    )
+
     response = client.get("/players/1/encounters")
 
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["outcome"] == "FAILURE"
+    assert response.json()[0]["difficulty"] == 150
 
 
 def test_get_available_encounters(client):
     response = client.get("/encounters/available")
 
     assert response.status_code == 200
-    assert len(response.json()) == 4
+    assert len(response.json()) == 10
     assert response.json()[0]["monster_name"] == "Flameling"
-    assert response.json()[0]["difficulty"] == 130
+    assert response.json()[0]["difficulty"] == 150
 
 
 def test_get_single_encounter(client):

@@ -8,7 +8,6 @@ class EncounterCreate(BaseModel):
     player_id: int = Field(gt=0)
     team_id: int = Field(gt=0)
     wild_monster_id: int = Field(gt=0)
-    difficulty: int = Field(gt=0)
 
 
 class EncounterResponse(BaseModel):
