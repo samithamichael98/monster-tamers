@@ -237,6 +237,23 @@ def get_player_teams(
         .order_by(models.TeamDB.id)
     ).all()
 
+    try:
+        response = httpx.get(
+            f"{MONSTER_SERVICE_URL}/monsters",
+            timeout=5.0,
+        )
+        response.raise_for_status()
+        catalogue = {
+            monster["id"]: monster
+            for monster in response.json()
+        }
+
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=503,
+            detail="Monster Service is currently unavailable",
+        )
+
     results = []
 
     for team in teams:
@@ -246,16 +263,29 @@ def get_player_teams(
             .order_by(models.TeamMonsterDB.monster_id)
         ).all()
 
+        try:
+            current_power = sum(
+                catalogue[monster_id]["attack"]
+                + catalogue[monster_id]["defense"]
+                for monster_id in monster_ids
+            )
+        except KeyError:
+            raise HTTPException(
+                status_code=404,
+                detail="A monster in this team no longer exists",
+            )
+
         results.append(
             TeamResponse(
                 id=team.id,
                 player_id=team.player_id,
                 monster_ids=list(monster_ids),
-                team_power=team.team_power,
+                team_power=current_power,
             )
         )
 
     return results
+
 
 @app.delete("/players/{player_id}/teams/{team_id}/monsters/{monster_id}")
 def remove_team_monster(

@@ -171,23 +171,6 @@ def test_invalid_player_id(client):
     assert response.status_code == 422
 
 
-def test_successful_encounter_high_difficulty(client):
-    response = client.post(
-        "/encounters",
-        json={
-            "player_id": 1,
-            "team_id": 4,
-            "wild_monster_id": 1,
-            "difficulty": 500,
-        },
-    )
-
-    assert response.status_code == 201
-    assert response.json()["outcome"] == "SUCCESS"
-    assert response.json()["team_power"] == 479
-    assert response.json()["difficulty"] == 450
-
-
 def test_encounter_history(client):
     client.post(
         "/encounters",

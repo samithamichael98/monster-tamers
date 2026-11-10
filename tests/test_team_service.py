@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
 from services.team_service.main import app
 from services.team_service.database import Base, get_db
 import services.team_service.main as team_main
@@ -34,25 +35,6 @@ def client(monkeypatch):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    def fake_get(url, timeout=5.0):
-        if url.endswith("/players/1/collection"):
-            return FakeResponse([
-                {"id": 1, "attack": 80, "defense": 50},
-                {"id": 2, "attack": 60, "defense": 80},
-                {"id": 3, "attack": 70, "defense": 100},
-            ])
-
-        if url.endswith("/monsters/1"):
-            return FakeResponse({"id": 1, "attack": 80, "defense": 50})
-
-        if url.endswith("/monsters/2"):
-            return FakeResponse({"id": 2, "attack": 60, "defense": 80})
-
-        if url.endswith("/monsters/3"):
-            return FakeResponse({"id": 3, "attack": 70, "defense": 100})
-
-        return FakeResponse({}, status_code=404)
-
     class FakeResponse:
         def __init__(self, data, status_code=200):
             self.data = data
@@ -64,6 +46,7 @@ def client(monkeypatch):
         def raise_for_status(self):
             if self.status_code >= 400:
                 import httpx
+
                 raise httpx.HTTPStatusError(
                     "Request failed",
                     request=httpx.Request("GET", "http://testserver"),
@@ -72,6 +55,30 @@ def client(monkeypatch):
                         request=httpx.Request("GET", "http://testserver"),
                     ),
                 )
+
+    def fake_get(url, timeout=5.0):
+        monsters = [
+            {"id": 1, "attack": 80, "defense": 50},
+            {"id": 2, "attack": 60, "defense": 80},
+            {"id": 3, "attack": 70, "defense": 100},
+        ]
+
+        if url.endswith("/players/1/collection"):
+            return FakeResponse(monsters)
+
+        if url.rstrip("/").endswith("/monsters"):
+            return FakeResponse(monsters)
+
+        if url.endswith("/monsters/1"):
+            return FakeResponse(monsters[0])
+
+        if url.endswith("/monsters/2"):
+            return FakeResponse(monsters[1])
+
+        if url.endswith("/monsters/3"):
+            return FakeResponse(monsters[2])
+
+        return FakeResponse({}, status_code=404)
 
     monkeypatch.setattr(team_main.httpx, "get", fake_get)
 
@@ -203,6 +210,8 @@ def test_remove_monster_from_team(client):
     assert response.status_code == 200
 
     teams_response = client.get("/players/1/teams")
+
+    assert teams_response.status_code == 200
     assert teams_response.json()[0]["monster_ids"] == [2]
     assert teams_response.json()[0]["team_power"] == 140
 
