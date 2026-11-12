@@ -65,6 +65,7 @@ database passwords or JWT secrets.
 
 ## Requirements
 
+
 Install the following before starting the project:
 
 - Docker Desktop or Docker Engine with Docker Compose
