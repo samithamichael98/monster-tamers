@@ -1,0 +1,139 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Myth.exe API Gateway",
+    "version": "1.0.0",
+    "description": "PLANNED SPECIFICATION — The API Gateway is not implemented. This document describes the proposed central entry point for the Myth.exe microservices."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Proposed local API Gateway address"
+    }
+  ],
+  "paths": {
+    "/users/register": {
+      "post": {
+        "summary": "Register a user",
+        "description": "Proposed forwarding route to the User Service.",
+        "operationId": "registerUser",
+        "responses": {
+          "200": {
+            "description": "Registration response from User Service"
+          },
+          "400": {
+            "description": "Invalid registration data"
+          }
+        }
+      }
+    },
+    "/users/login": {
+      "post": {
+        "summary": "Authenticate a user",
+        "description": "Proposed forwarding route to the User Service.",
+        "operationId": "loginUser",
+        "responses": {
+          "200": {
+            "description": "Login response from User Service"
+          },
+          "401": {
+            "description": "Authentication failed"
+          }
+        }
+      }
+    },
+    "/monsters": {
+      "get": {
+        "summary": "List monsters",
+        "description": "Proposed forwarding route to the Monster Service.",
+        "operationId": "listMonsters",
+        "responses": {
+          "200": {
+            "description": "Monster catalogue"
+          }
+        }
+      }
+    },
+    "/players/{player_id}/collection": {
+      "get": {
+        "summary": "Get player collection",
+        "description": "Proposed forwarding route to the Monster Service.",
+        "operationId": "getPlayerCollection",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player monster collection"
+          }
+        }
+      }
+    },
+    "/players/{player_id}/teams": {
+      "get": {
+        "summary": "List player teams",
+        "description": "Proposed forwarding route to the Team Service.",
+        "operationId": "getPlayerTeams",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player teams"
+          }
+        }
+      }
+    },
+    "/encounters": {
+      "post": {
+        "summary": "Resolve an encounter",
+        "description": "Proposed forwarding route to the Encounter Service.",
+        "operationId": "resolveEncounter",
+        "responses": {
+          "200": {
+            "description": "Encounter result"
+          },
+          "400": {
+            "description": "Invalid encounter request"
+          }
+        }
+      }
+    },
+    "/players/{player_id}/encounters": {
+      "get": {
+        "summary": "Get encounter history",
+        "description": "Proposed forwarding route to the Encounter Service.",
+        "operationId": "getEncounterHistory",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player encounter history"
+          }
+        }
+      }
+    }
+  }
+}
