@@ -1,260 +1,310 @@
-# Monster Tamers
+# Myth.exe
 
-Monster Tamers is a FastAPI project for managing monsters, player
-collections, teams, and monster encounters. The application uses PostgreSQL
-for monster and player-collection data and SQLAlchemy for database access.
+Myth.exe is a FastAPI-based microservices application for a monster-collection and encounter game. The system consists of four independently deployed microservices, each with its own PostgreSQL database, orchestrated using Docker Compose.
 
-## Features
+## 1. Group Information
 
-- List all monsters
-- Retrieve a monster by ID
-- View a player's monster collection
-- Create a team of up to three unique monsters
-- Resolve monster encounters based on team power and difficulty
-- Award a wild monster after a successful encounter
-- View a player's encounter history
-- Interactive OpenAPI documentation through FastAPI
+**Group name:** Myth.exe
 
-## Technology stack
+| # | Full name | University email |
+|---|---|---|
+| 1 | Samitha Piumanga Michael | s.michael@studenti.unipi.it |
+| 2 | Abhinav Das | a.das6@studenti.unipi.it |
+| 3 | Sara Xxx | s.xxx10@studenti.unipi.it |
+| 4 | Ebin Neelankavil Lenin | e.neelankavillenin@studenti.unipi.it |
 
-- Python 3.10 or newer
-- FastAPI
-- Uvicorn
-- SQLAlchemy
-- PostgreSQL
-- Psycopg
-- Pytest
+## 2. Architecture
 
-## Project structure
+The application currently consists of four microservices:
 
-```text
-monster-tamers/
-├── app/
-│   ├── db/
-│   │   ├── database.py       # SQLAlchemy engine and session dependency
-│   │   └── db_models.py      # Database models
-│   ├── routers/
-│   │   └── monsters.py       # Monster API routes
-│   └── models.py             # Pydantic request and response models
-├── tests/
-│   └── test_monsters.py      # API tests
-├── docker-compose.yml        # PostgreSQL development service
-├── check_db.py               # Database connectivity/query check
-├── main.py                   # FastAPI application entry point
-└── .gitignore
-```
+- **User Service:** User registration, login and profiles.
+- **Monster Service:** Monster catalogue and player collections.
+- **Team Service:** Player teams and team validation.
+- **Encounter Service:** Encounter resolution and encounter history.
 
-## Requirements
+Each service owns a separate PostgreSQL database. Services communicate with one another through HTTP requests over the Docker network.
 
-Before running the application, make sure the following are installed:
+### Architecture Diagram
 
-- Python 3.10+
-- Docker Desktop or Docker Engine with Compose
-- `pip`
+![Myth.exe Architecture](docs/architecture/architecture.png)
 
-## Installation
+The API Gateway is included in the planned architecture but has not yet been implemented. Currently, clients access the four services directly through their individual ports.
 
-Clone the repository and enter the project directory:
+### Service Overview
+
+| Service | Port | Responsibility |
+|---|---:|---|
+| User Service | 8001 | User accounts and profiles |
+| Monster Service | 8002 | Monster catalogue and collections |
+| Team Service | 8003 | Player teams |
+| Encounter Service | 8004 | Encounters and history |
+| API Gateway | Planned | Central entry point for service requests |
+
+### Database Overview
+
+| Database | Host port | Database name | Database user |
+|---|---:|---|---|
+| User database | 5433 | `user_db` | `user_service` |
+| Monster database | 5434 | `monster_db` | `monster_service` |
+| Team database | 5435 | `team_db` | `team_service` |
+| Encounter database | 5436 | `encounter_db` | `encounter_service` |
+
+## 3. OpenAPI Specifications
+
+The following OpenAPI JSON specifications are available in the `docs/` directory:
+
+- [User Service OpenAPI](docs/user-service-openapi.json)
+- [Monster Service OpenAPI](docs/monster-service-openapi.json)
+- [Team Service OpenAPI](docs/team-service-openapi.json)
+- [Encounter Service OpenAPI](docs/encounter-service-openapi.json)
+- [API Gateway OpenAPI — Planned](docs/api-gateway-openapi.json)
+
+**Important:** The API Gateway OpenAPI document describes a proposed API contract. The API Gateway itself is not implemented or currently accessible.
+
+### Interactive Swagger Documentation
+
+FastAPI provides interactive Swagger UI for each implemented service:
+
+| Service | Swagger UI |
+|---|---|
+| User Service | http://localhost:8001/docs |
+| Monster Service | http://localhost:8002/docs |
+| Team Service | http://localhost:8003/docs |
+| Encounter Service | http://localhost:8004/docs |
+
+## 4. Implementation Status
+
+The following table summarizes the current implementation status.
+
+| Functionality | Status |
+|---|---|
+| User registration | Implemented |
+| User login | Implemented |
+| User profile retrieval | Implemented |
+| Monster catalogue | Implemented |
+| Player monster collection | Implemented |
+| Monster acquisition through encounters | Implemented |
+| Team creation | Implemented |
+| Team validation and monster limits | Implemented |
+| Team replacement and removal | Implemented |
+| Team power calculation | Implemented |
+| Available encounter listing | Implemented |
+| Encounter resolution | Implemented |
+| Encounter result details | Implemented |
+| Encounter history | Implemented |
+| Player progress persistence | Implemented; end-to-end verification pending |
+| Complete monster image coverage | Partially implemented |
+| API Gateway | Planned |
+| Graphical frontend | Not implemented |
+| HTTPS configuration | Not implemented |
+
+The backend currently provides the main functionality for user management, monster collections, team management and encounter processing.
+
+The encounter service calculates encounter difficulty and resolves outcomes using the implemented game rules. Successful encounters can reward players with the corresponding monster.
+
+The API Gateway, graphical frontend and HTTPS configuration remain future development tasks.
+
+## 5. Requirements
+
+Install the following before running the project:
+
+- Docker Desktop or Docker Engine with Docker Compose
+- Git
+- Python 3.13 or newer for local development and testing
+
+## 6. Running the Application
+
+### 6.1 Clone the Repository
 
 ```bash
 git clone https://github.com/samithamichael98/monster-tamers.git
 cd monster-tamers
 ```
 
-Create and activate a virtual environment:
+### 6.2 Configure Environment Variables
 
-### macOS/Linux
+Create a `.env` file in the project root. Configure the required variables using your local credentials.
+
+```dotenv
+POSTGRES_PASSWORD=your_postgres_password
+
+USER_DB_PASSWORD=your_user_db_password
+MONSTER_DB_PASSWORD=your_monster_db_password
+TEAM_DB_PASSWORD=your_team_db_password
+ENCOUNTER_DB_PASSWORD=your_encounter_db_password
+
+JWT_SECRET_KEY=your_long_random_jwt_secret
+```
+
+Do not commit real database passwords or JWT secrets to GitHub.
+
+### 6.3 Build and Start the Services
+
+```bash
+docker compose up --build -d
+```
+
+Check the container status:
+
+```bash
+docker compose ps
+```
+
+View all service logs:
+
+```bash
+docker compose logs -f
+```
+
+View an individual service log:
+
+```bash
+docker compose logs -f user-service
+```
+
+### 6.4 Check Service Health
+
+```bash
+curl http://127.0.0.1:8001/health
+curl http://127.0.0.1:8002/health
+curl http://127.0.0.1:8003/health
+curl http://127.0.0.1:8004/health
+```
+
+Each service should return a healthy response.
+
+## 7. API Endpoints
+
+### User Service — Port 8001
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Check service health |
+| `POST` | `/register` | Register a user |
+| `POST` | `/login` | Authenticate a user |
+| `GET` | `/me` | Retrieve the authenticated user's profile |
+
+### Monster Service — Port 8002
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Check service health |
+| `GET` | `/monsters` | List all monsters |
+| `GET` | `/monsters/{monster_id}` | Retrieve monster details |
+| `GET` | `/players/{player_id}/collection` | Retrieve player collection |
+| `POST` | `/players/{player_id}/collection` | Add a monster to a collection |
+
+### Team Service — Port 8003
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Check service health |
+| `POST` | `/players/{player_id}/teams` | Create a team |
+| `GET` | `/players/{player_id}/teams` | List player teams |
+
+### Encounter Service — Port 8004
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Check service health |
+| `GET` | `/encounters/available` | List available encounters |
+| `POST` | `/encounters` | Resolve an encounter |
+| `GET` | `/players/{player_id}/encounters` | Retrieve encounter history |
+
+For request parameters and response schemas, refer to the individual OpenAPI specifications.
+
+## 8. Example API Request
+
+The following example creates an encounter using player 1, team 4 and wild monster 4.
+
+```bash
+curl -X POST http://127.0.0.1:8004/encounters \
+  -H "Content-Type: application/json" \
+  -d '{
+    "player_id": 1,
+    "team_id": 4,
+    "wild_monster_id": 4
+  }'
+```
+
+The backend calculates encounter difficulty automatically. It is not supplied by the client.
+
+## 9. Running Tests
+
+The project includes automated tests for the four microservices.
+
+From the project root, create and activate a virtual environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### Windows PowerShell
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-Install the Python dependencies:
+Install dependencies:
 
 ```bash
-python -m pip install fastapi "uvicorn[standard]" sqlalchemy "psycopg[binary]" python-dotenv pytest httpx
+python -m pip install -r requirements.txt
 ```
 
-## Database Setup (PostgreSQL + pgAdmin)
-
-Monster Tamers uses a local PostgreSQL database. Docker is not required.
-
-### 1. Install PostgreSQL
-
-Install PostgreSQL on your computer using the official installer for your operating system:
-
-- PostgreSQL downloads: https://www.postgresql.org/download/
-- pgAdmin: https://www.pgadmin.org/download/
-
-You can use pgAdmin to create and manage your database and view its tables.
-
-### 2. Create the database
-
-Open pgAdmin, connect to your local PostgreSQL server, right-click **Databases**, and select **Create → Database**.
-
-Use this database name:
-
-`monster_tamers`
-
-Use your own PostgreSQL username and password. The default local PostgreSQL port is usually `5432`.
-
-### 3. Configure the application
-
-Create a `.env` file in the project root. Do not commit this file or share your database password.
-
-Add your own connection details:
-
-```dotenv
-DATABASE_URL=postgresql+psycopg://YOUR_USERNAME:YOUR_PASSWORD@127.0.0.1:5432/monster_tamers
-```
-
-Replace `YOUR_USERNAME` and `YOUR_PASSWORD` with your PostgreSQL credentials. If your password contains special characters, URL-encode them in the connection URL.
-
-The application reads `DATABASE_URL` from `.env`. If it is not configured, the default connection URL in `app/db/database.py` is used.
-
-### 4. Create the database tables
-
-From the project root, with your virtual environment activated, run:
+Run the complete test suite:
 
 ```bash
-python init_db.py
+python -m pytest -v
 ```
 
-This creates any missing SQLAlchemy tables defined by the application models. It does not automatically insert the sample monsters.
+The tests use isolated test databases and mock service interactions where appropriate. Required environment variables must be configured for service imports.
 
-### 5. Add the sample monsters
+## 10. Stopping the Application
 
-In pgAdmin, open **Tools → Query Tool** for the `monster_tamers` database and run the following SQL if the sample monsters are not already present:
-
-```sql
-INSERT INTO monsters (id, name, type, attack, defense)
-VALUES
-    (1, 'Flameling', 'Fire', 80, 50),
-    (2, 'Aquaris', 'Water', 60, 80),
-    (3, 'Stonehorn', 'Earth', 70, 100),
-    (4, 'Shadowling', 'Shadow', 90, 60)
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO player_monsters (player_id, monster_id)
-VALUES
-    (1, 1),
-    (1, 2),
-    (1, 3)
-ON CONFLICT (player_id, monster_id) DO NOTHING;
-```
-
-Run the sample-data SQL only after creating the tables. If your database already contains the sample data, you do not need to run it again.
-
-### 6. Verify the database connection
-
-Run:
+Stop containers while preserving database data:
 
 ```bash
-python check_db.py
+docker compose down
 ```
 
-If the connection fails, verify that PostgreSQL is running, the database exists, and your `.env` connection details are correct.
-```
-
-Save the SQL above as `seed.sql` first, or run it through any PostgreSQL
-client connected to `127.0.0.1:5433`.
-
-If the sample data already exists, do not run the `INSERT` statements again.
-
-You can check the database connection and list the stored monsters with:
+To stop containers and permanently delete database volumes:
 
 ```bash
-python check_db.py
+docker compose down -v
 ```
 
-## Running the application
+Use the second command only when you intentionally want to reset all local database data.
 
-Start the development server from the project root:
+## 11. Troubleshooting
+
+### Containers Are Not Healthy
+
+Check the service status and logs:
 
 ```bash
-uvicorn main:app --reload
+docker compose ps
+docker compose logs --tail=100 user-db user-service
 ```
 
-The API is available at:
+Make sure `.env` exists and contains all required variables.
 
-```text
-http://127.0.0.1:8000
-```
+### Password Authentication Failed
 
-Interactive API documentation is available at:
+PostgreSQL stores credentials in its persistent volume. If the password in `.env` was changed after a database volume was created, the existing database may still use the old password.
 
-- Swagger UI: <http://127.0.0.1:8000/docs>
-- ReDoc: <http://127.0.0.1:8000/redoc>
-
-## API endpoints
-
-### Application endpoints
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/` | Returns a welcome message |
-| `GET` | `/health` | Returns the application health status |
-
-### Monster endpoints
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/monsters/` | List all monsters |
-| `GET` | `/api/monsters/{monster_id}` | Get one monster |
-| `GET` | `/api/monsters/collection/{player_id}` | Get a player's collection |
-| `POST` | `/api/monsters/teams/{player_id}` | Create a team |
-| `POST` | `/api/monsters/encounters` | Resolve an encounter |
-| `GET` | `/api/monsters/encounters/history/{player_id}` | Get encounter history |
-
-### Example requests
-
-Create a team:
+Restore the original password or intentionally recreate the local database volumes:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/monsters/teams/1 \
-  -H "Content-Type: application/json" \
-  -d '{"monster_ids": [1, 2, 3]}'
+docker compose down -v
+docker compose up --build -d
 ```
 
-Resolve an encounter:
+### Port Already in Use
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/monsters/encounters \
-  -H "Content-Type: application/json" \
-  -d '{
-    "player_id": 1,
-    "monster_ids": [1, 2, 3],
-    "wild_monster_id": 4,
-    "difficulty": 400
-  }'
-```
+Stop the process using the port, or change the host-side port mapping in `docker-compose.yml`. Do not change the container ports used for service-to-service communication.
 
-## Testing
+## 12. Additional Information
 
-Start the Docker database before running the test suite:
+- Each microservice is independently deployed.
+- Each microservice owns its own PostgreSQL database.
+- Docker Compose manages the services and their database containers.
+- Service-to-service communication uses HTTP.
+- The API Gateway and graphical frontend are planned but not yet implemented.
+- The project is under active development, and some functionality remains incomplete.
 
-```bash
-docker compose --env-file .env.docker up -d db
-python -m pytest -q
-```
-
-The tests use the configured database. Successful encounter tests add the wild
-monster to the player's collection; the test fixture resets that test record
-before each test.
-
-## Environment variables
-
-| Variable | Description | Default |
-| --- | --- | --- |
-| `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL | Docker connection on `127.0.0.1:5433` |
-
-Do not commit passwords, API keys, or other secrets. Use local environment
-variables or an untracked `.env` file for development configuration.
+This repository represents the current development state of Myth.exe for the second optional submission. The implementation status is documented to support review and feedback.

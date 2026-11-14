@@ -1,0 +1,164 @@
+
+services:
+  user-db:
+    image: postgres:18
+    container_name: monster-tamers-user-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - user_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_service -d user_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user_service/Dockerfile
+    container_name: monster-tamers-user-service
+    restart: unless-stopped
+    environment:
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+      USER_DB_HOST: user-db
+      USER_DB_PORT: "5432"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      MONSTER_SERVICE_URL: http://monster-service:8002
+      TEAM_SERVICE_URL: http://team-service:8003
+      ENCOUNTER_SERVICE_URL: http://encounter-service:8004
+    ports:
+      - "127.0.0.1:8001:8001"
+    depends_on:
+      user-db:
+        condition: service_healthy
+      monster-service:
+        condition: service_started
+      team-service:
+        condition: service_started
+      encounter-service:
+        condition: service_started
+
+  monster-db:
+    image: postgres:18
+    container_name: monster-tamers-monster-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: monster_db
+      POSTGRES_USER: monster_service
+      POSTGRES_PASSWORD: ${MONSTER_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - monster_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monster_service -d monster_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  monster-service:
+    build:
+      context: .
+      dockerfile: services/monster_service/Dockerfile
+    container_name: monster-tamers-monster-service
+    restart: unless-stopped
+    environment:
+      MONSTER_DB_PASSWORD: ${MONSTER_DB_PASSWORD}
+      MONSTER_DB_HOST: monster-db
+      MONSTER_DB_PORT: "5432"
+    ports:
+      - "127.0.0.1:8002:8002"
+    depends_on:
+      monster-db:
+        condition: service_healthy
+
+  team-db:
+    image: postgres:18
+    container_name: monster-tamers-team-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: team_db
+      POSTGRES_USER: team_service
+      POSTGRES_PASSWORD: ${TEAM_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - team_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U team_service -d team_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  team-service:
+    build:
+      context: .
+      dockerfile: services/team_service/Dockerfile
+    container_name: monster-tamers-team-service
+    restart: unless-stopped
+    environment:
+      TEAM_DB_PASSWORD: ${TEAM_DB_PASSWORD}
+      TEAM_DB_HOST: team-db
+      TEAM_DB_PORT: "5432"
+      MONSTER_SERVICE_URL: http://monster-service:8002
+      TEAM_SERVICE_URL: http://team-service:8003
+      ENCOUNTER_SERVICE_URL: http://encounter-service:8004
+    ports:
+      - "127.0.0.1:8003:8003"
+    depends_on:
+      team-db:
+        condition: service_healthy
+      monster-service:
+        condition: service_started
+
+  encounter-db:
+    image: postgres:18
+    container_name: monster-tamers-encounter-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: encounter_db
+      POSTGRES_USER: encounter_service
+      POSTGRES_PASSWORD: ${ENCOUNTER_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - encounter_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U encounter_service -d encounter_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  encounter-service:
+    build:
+      context: .
+      dockerfile: services/encounter_service/Dockerfile
+    container_name: monster-tamers-encounter-service
+    restart: unless-stopped
+    environment:
+      ENCOUNTER_DB_PASSWORD: ${ENCOUNTER_DB_PASSWORD}
+      ENCOUNTER_DB_HOST: encounter-db
+      ENCOUNTER_DB_PORT: "5432"
+      TEAM_SERVICE_URL: http://team-service:8003
+      MONSTER_SERVICE_URL: http://monster-service:8002
+    ports:
+      - "127.0.0.1:8004:8004"
+    depends_on:
+      encounter-db:
+        condition: service_healthy
+      team-service:
+        condition: service_started
+      monster-service:
+        condition: service_started
+
+volumes:
+  user_db_data:
+  monster_db_data:
+  team_db_data:
+  encounter_db_data:

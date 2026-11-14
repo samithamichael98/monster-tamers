@@ -1,0 +1,77 @@
+
+name: Myth.exe - Automated Tests
+
+on:
+  push:
+    branches:
+      - main
+      - feature/microservices-upgrade
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      USER_DB_PASSWORD: ci-user-password
+      MONSTER_DB_PASSWORD: ci-monster-password
+      TEAM_DB_PASSWORD: ci-team-password
+      ENCOUNTER_DB_PASSWORD: ci-encounter-password
+      JWT_SECRET_KEY: ci-only-secret-key-for-automated-tests-123456789
+
+    services:
+      user-db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: user_service
+          POSTGRES_PASSWORD: ci-user-password
+          POSTGRES_DB: user_db
+        ports:
+          - 5433:5432
+
+      monster-db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: monster_service
+          POSTGRES_PASSWORD: ci-monster-password
+          POSTGRES_DB: monster_db
+        ports:
+          - 5434:5432
+
+      team-db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: team_service
+          POSTGRES_PASSWORD: ci-team-password
+          POSTGRES_DB: team_db
+        ports:
+          - 5435:5432
+
+      encounter-db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: encounter_service
+          POSTGRES_PASSWORD: ci-encounter-password
+          POSTGRES_DB: encounter_db
+        ports:
+          - 5436:5432
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run automated tests
+        run: |
+          python -m pytest -v
